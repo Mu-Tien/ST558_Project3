@@ -18,26 +18,25 @@ library(ggpubr)
 library(rpart.plot)
 library(rpart)
 library(DT)
-library("cluster")
-library("factoextra")
-library("magrittr")
-library("NbClust")
-library("plotly")
-
+library(cluster)
+library(factoextra)
+library(magrittr)
+library(NbClust)
+library(plotly)
 # Define server logic required to draw a histogram
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session){
 
 #read in data
 data <- read.csv("diabetes_data.csv")
-for( j in 1: nrow(data)){    
+for( j in 1:nrow(data)){    
   ifelse (data[j,17] == "Positive", data[j,17] <- 1,data[j,17] <- 0)
   
   for (i in 3:16){
     if (data[j,i] == "Yes") data[j,i] <- 1
     else if (data[j,i] == "No") data[j,i] <- 0
   }
-} 
-mydata<- data
+}
+mydata<-data
 for (i in 3:16){
   mydata[,i] <- as.numeric(mydata[,i])%>% as.factor()
   data[,i] <- as.numeric(data[,i])
@@ -73,18 +72,19 @@ mydata <- as_tibble(mydata)
      sumdata[,3:17]<- round(sumdata[,3:17],2)
      datatable(sumdata)
    })
-
-#PCA plots
-   output$PCA <- renderPlotly({
+   
+# convert gender into numeric
      for (i in 1:nrow(data)){
        ifelse(data[i,2]=="Male",data[i,2] <- "1", data[i,2]<-"0" )
      }
      data$Gender <- as.numeric(data$Gender)
-     pairs(data[,1:16],cex=0.4)
+     
+#PCA plots
+   output$PCA <- renderPlotly({
      PCs <- prcomp(data[,1:16], center=TRUE, scale=TRUE)
      ggbiplot(PCs, group=data$class)
    })
-#   anyNA(data)
+
 # Optimal number of cluster
    output$recomCluster <- renderPlotly({
      fviz_nbclust(data[,1:16], kmeans, method ="silhouette")
@@ -98,7 +98,7 @@ mydata <- as_tibble(mydata)
                   palette = "jco")
    })
 
-#Clustering using hierclust
+#Clustering using hierarchical clustering
    output$Hierclust <- renderPlotly({
      HierClust <- hclust(dist(data[,1:16]), method = "ward.D2")
      fviz_dend(HierClust, k = input$clusteringNum, # Cut in four groups
@@ -108,4 +108,31 @@ mydata <- as_tibble(mydata)
                rect = TRUE # Add rectangle around groups
      )
    })
+   
+   #separating training and testing dataset
+   train <- sample(1:nrow(mydata), size = nrow(mydata)*0.8)
+   test <- dplyr::setdiff(1:nrow(mydata), train)
+   diabetesdataTrain <- mydata[train, ]
+   diabetesdataTest <- mydata[test, ]
+
+#modeling1-logistic regression
+   reg_model <- eventReactive(input$start_reg,{
+      trctrl_reg <- trainControl(method = input$reg_trainmethod, 
+                                 number = input$reg_num_folders)
+      reg_fit <- train(class~., data = diabetesdataTrain, method = "glm",
+                       family="binomial",
+                       trControl=trctrl_reg,
+                       preProcess = c("center", "scale"))
+      output <- reg_fit$results
+   })
+   
+   output$regTrain <- renderPrint({
+      list <- reg_model()
+      list$output
+   })
+   
+#modeling2-tree based(rf, bagged, boosting)
+   
+#modeling3-KNN
+   
 })

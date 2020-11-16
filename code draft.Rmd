@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-install.packages("plotly")
+#install.packages("plotly")
 #install_github("vqv/ggbiplot")
 library(ggbiplot)
 library(remotes)
@@ -34,6 +34,7 @@ library(DT)
 
 ```{r data}
 data <- read.csv("./diabetes_data.csv")
+#data2 <- read.csv("diabetes_2")
 for( j in 1: nrow(data)){    
   ifelse (data[j,17] == "Positive", data[j,17] <- 1,data[j,17] <- 0)
 
@@ -59,10 +60,10 @@ ggplot(data=mydata, aes(x=Age))+geom_histogram(aes(fill=class))+labs(title = "Hi
 
 dataplot <- function(var1, var2){
   t <- paste0("Scatter plots for ", var1, " and ", var2)
-  ggplot(data=mydata)+geom_jitter(aes_string(x=var1, y=var2, color="class"))+facet_grid(.~Gender)+labs(title = t)+ scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))
+  ggplot(data=mydata)+geom_count(aes_string(x=var1, y=var2, color="class",alpha=0.8))+facet_grid(.~Gender)+labs(title = t)+ scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))
 }
 dataplot("Polyuria","Polyphagia")
-# legent incorrect
+# legend incorrect
 names(mydata)
 ```
 #summary table
@@ -77,7 +78,7 @@ sumtable(groups=c("Gender","class"))
 
 #unsupervised learning
 ```{r PCA}
-install.packages("ggbiplot")
+#install.packages("ggbiplot")
 library(ggbiplot)
 for (i in 1:nrow(data)){
   ifelse(data[i,2]=="Male",data[i,2] <- "1", data[i,2]<-"0" )
@@ -107,7 +108,7 @@ fviz_cluster(km.res, data = data[,1:16],
              ellipse.type = "convex",
              palette = "jco")
 
-{(1.96+1.96*√(12/60))/12}^2*4*12#Hierarchical 
+#Hierarchical 
 HierClust <- hclust(dist(data.frame(data[,1:16])), method = "ward.D2")
 fviz_dend(HierClust, k = 4, # Cut in four groups
           cex = 0.5, # label size
@@ -122,8 +123,63 @@ fviz_dend(HierClust, k = 4, # Cut in four groups
 set.seed(615)
 train <- sample(1:nrow(mydata), size = nrow(mydata)*0.8)
 test <- dplyr::setdiff(1:nrow(mydata), train)
-diabetesdataTrain <- diabetesdata[train, ]
-diabetesdataTest <- diabetesdata[test, ]
+diabetesdataTrain <- mydata[train, ]
+diabetesdataTest <- mydata[test, ]
+
+# set up training control, using cross validation with 10 folder
+set.seed(615)
+trctrl <- trainControl(method = "cv", number = 10)
+
+#tree based model
+Tree_fit <- train(class~., data = diabetesdataTrain, method = "gbm",
+                trControl=trctrl,
+                preProcess = c("center", "scale")
+                )
+Tree_fit
+
+Tree_pred <- predict(Tree_fit, newdata = diabetesdataTest)
+postResample(Tree_pred, diabetesdataTest$class)
+
+#KNN model
+KNN <- train(class~., data = diabetesdataTrain, method = "knn",
+             trControl=trctrl,
+             preProcess = c("center", "scale")
+             )
+KNN
+plot(KNN)
+
+knn_pred <- predict(KNN, newdata = diabetesdataTest)
+postResample(knn_pred, diabetesdataTest$class)
+
+#logistic regression model
+reg_fit <- train(class~., data = diabetesdataTrain, method = "glm",
+                 family="binomial",
+                 trControl=trctrl,
+                 preProcess = c("center", "scale")
+                 )
+reg_fit$results
+plot(reg_fit)
+
+reg_pred <- predict(reg_fit, newdata = diabetesdataTest)
+postResample(reg_pred, diabetesdataTest$class)
 
 ```
+      reg_model <- eventReactive(input$start_reg{
+         trctrl_reg <- trainControl(method = input$reg_trainmethod, 
+                                    number = input$reg_num_folders)
+         reg_fit <- train(class~., data = diabetesdataTrain, method = "glm",
+                          family="binomial",
+                          trControl=trctrl_reg,
+                          preProcess = c("center", "scale"))
+      })
 
+      output$regTrain <- renderTable({
+         table(reg_model$reg_fit)
+      })
+
+      output$regTest <- renderText({
+         Tree_pred <- predict(reg_model$reg_fit, newdata = diabetesdataTest)
+         result <- postResample(Tree_pred, diabetesdataTest$class)
+         
+         paste0("When testing in test data set the Accuracy is ", round(result[1],2), " and Kappa is ", round(result[2],2))
+      })

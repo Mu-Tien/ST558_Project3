@@ -1,7 +1,7 @@
 # project 3 ui page
 
 library(shiny)
-names(mydata)
+
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
 #information page  
@@ -59,7 +59,7 @@ shinyUI(fluidPage(
                                             "Obesity")),
                  selectInput("plotvar2",label="Second Variables for the scatter plot",
                              choices = list("Polyuria",
-                                            "Polydipsia"=mydata$Polydipsia,
+                                            "Polydipsia",
                                             "sudden weight loss"="sudden.weight.loss",
                                             "weakness",
                                             "Polyphagia",
@@ -130,8 +130,76 @@ shinyUI(fluidPage(
 
 #modeling page
     tabPanel("Modeling and Prediction",
-             ""),
-    
+             h1("Training supervised learning and do the prediction"),
+             #tab inside this page
+             navlistPanel(
+               #Regression model
+               tabPanel("Regression model",
+                        verticalLayout(
+                          
+                          #training
+                          sidebarLayout(
+                            sidebarPanel(
+                              h2("Training Logistic regression"),
+                              radioButtons("reg_trainmethod",
+                                           label = "Select a method to do a training control",
+                                           choices = c("Bootstrapt"="boot",
+                                                       "Cross validation"="cv",
+                                                       "Repeated cross validation"="repeatedcv",
+                                                       "Leave one out cross validation"="LOOCV")),
+                              sliderInput("reg_num_folders", 
+                                          label="Select number of folders using in training method",
+                                          min=1, max=10, value=3),
+                              conditionalPanel(condition="input.reg_trainmethod=='repeatedcv'",
+                                               sliderInput("reg_num_times",label="How many times to repeat cross validation",
+                                                           min=1, max=10, value=3)),
+                              actionButton("start_reg",label="Start training")
+                              ),
+                            mainPanel(
+                              textOutput("regTrain")
+                              )
+                          ),# end of training sidebar layout
+                          
+                          #predicting
+                          sidebarLayout(
+                            sidebarPanel(
+                              h2("Predicting using Logistic regression")
+                              ),
+                            mainPanel(
+                              verticalLayout(
+                                h2("Input all your symptom to do the prediction"),
+                              fluidRow(column(3,radioButtons("reg_Gender","Gender",c("Male", "Female"))),
+                                       column(3,numericInput("reg_age", "Your age",30, min=10, max=100)),
+                                       column(3,radioButtons("reg_Polyuria","Polyuria",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_Polydipsia","Polydipsia ",c("Yes"=1, "No"=0)))
+                                       ),
+                              fluidRow(
+                                       column(3,radioButtons("reg_WL","Sudden weight loss",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_weakness","Weakness",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_Polyphagia","Polyphagia",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_GT","Genital thrush",c("Yes"=1, "No"=0)))
+                              ),
+                              fluidRow(
+                                       column(3,radioButtons("reg_VB","Visual blurring",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_itch","Itching",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_irri","Irritability",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_DH","Delayed healing",c("Yes"=1, "No"=0)))
+                              ),
+                              fluidRow(
+                                       column(3,radioButtons("reg_PP","Partial paresis",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_MS","Muscle stiffness",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_Alopecia","Alopecia",c("Yes"=1, "No"=0))),
+                                       column(3,radioButtons("reg_Obesity","Obesity",c("Yes"=1, "No"=0)))
+                              )
+                              )
+                            )
+                            )# end of predicting sidebar layout
+             )# end of vertical Layout
+               ),#End of Regression model tab
+             widths = c(2,10))# end of tabs in this tab
+    ),
+    #end of modeling page
+
 #data saving page
     tabPanel("Data saving",
              "")
