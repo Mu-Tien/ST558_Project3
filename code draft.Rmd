@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 #install.packages("plotly")
 #install_github("vqv/ggbiplot")
+install.packages('wesanderson')
+library(rsconnect)
 library(ggbiplot)
 library(remotes)
 library(dmm)
@@ -30,6 +32,9 @@ library(ggpubr)
 library(rpart.plot)
 library(rpart)
 library(DT)
+rsconnect::setAccountInfo(name='mutien', token='0A2BC4BAAFE09D912EE7CB21B87BBA88', secret='W0xdI1quIfYRq/G7tR+tN1VF2PAoXKOmbkOtpyZf')
+
+rsconnect::deployApp('C:\\Users\\LeeSF\\Desktop\\2020 fall\\ST558\\repo\\ST558_Project3\\Project3') 
 ```
 
 ```{r data}
@@ -129,13 +134,14 @@ diabetesdataTest <- mydata[test, ]
 # set up training control, using cross validation with 10 folder
 set.seed(615)
 trctrl <- trainControl(method = "cv", number = 10)
-
+print(trctrl)
 #tree based model
-Tree_fit <- train(class~., data = diabetesdataTrain, method = "gbm",
+Tree_fit <- train(class~., data = diabetesdataTrain, method = "treebag",
                 trControl=trctrl,
                 preProcess = c("center", "scale")
                 )
-Tree_fit
+Tree_fit$results
+plot(Tree_fit)
 
 Tree_pred <- predict(Tree_fit, newdata = diabetesdataTest)
 postResample(Tree_pred, diabetesdataTest$class)
@@ -145,7 +151,8 @@ KNN <- train(class~., data = diabetesdataTrain, method = "knn",
              trControl=trctrl,
              preProcess = c("center", "scale")
              )
-KNN
+KNN$pred
+
 plot(KNN)
 
 knn_pred <- predict(KNN, newdata = diabetesdataTest)
@@ -183,3 +190,14 @@ postResample(reg_pred, diabetesdataTest$class)
          
          paste0("When testing in test data set the Accuracy is ", round(result[1],2), " and Kappa is ", round(result[2],2))
       })
+      
+                      tuneGrid=expand.grid(n.trees=seq(100,1250,25),
+                                     interaction.depth=5:11,
+                                     shrinkage=0.1, n.minobsinnode=10
+                                     
+                                        # Downloadable csv of selected dataset 
+   output$downloadData <- downloadHandler(
+      filename = function(){paste("diabetesData", ".csv", sep = "")},
+      content = function(file){write.csv(downloaddata, file)}
+
+   )

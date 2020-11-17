@@ -7,7 +7,6 @@ library(rmarkdown)
 library(MuMIn)
 library(tidyverse)
 library(caret)
-library(corrplot)
 library(readxl)
 library(caret)
 library(ggiraphExtra)
@@ -23,11 +22,15 @@ library(factoextra)
 library(magrittr)
 library(NbClust)
 library(plotly)
+library(wesanderson)
+
 # Define server logic required to draw a histogram
 shinyServer(function(input, output, session){
 
 #read in data
 data <- read.csv("diabetes_data.csv")
+
+#transfer data type
 for( j in 1:nrow(data)){    
   ifelse (data[j,17] == "Positive", data[j,17] <- 1,data[j,17] <- 0)
   
@@ -41,35 +44,49 @@ for (i in 3:16){
   mydata[,i] <- as.numeric(mydata[,i])%>% as.factor()
   data[,i] <- as.numeric(data[,i])
 }
+#store data better
 data <- as_tibble(data)
 mydata$class <- as.factor(mydata$class)
 mydata <- as_tibble(mydata)
 
+# output math type equation
+output$math <- renderUI({
+   withMathJax(helpText('The summary number can represent the propotion in each group:  $$P[symptom=1]=x$$'))
+})
+
 #histogram of data
    output$histogram <- renderPlotly({
-     ggplot(data=mydata, aes(x=Age))+geom_histogram(aes(fill=class))+labs(title = "Histogram for age seperate by test result")+facet_grid(.~Gender)+scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))
+     ggplot(data=mydata, aes(x=Age))+geom_histogram(aes(fill=class))+
+         labs(title = "Histogram for age seperate by test result")+
+         facet_grid(.~Gender)+scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))+
+         scale_fill_manual(values=wes_palette(n=2, name="Royal1"),labels=c("No", "Yes"))
    })
 
 # scatter plot of data
-   output$scatter <- renderPlotly({
-     t <- paste0("Scatter plots for ", input$plotvar1, " and ", input$plotvar2)
-     ggplot(data=mydata)+geom_jitter(aes_string(x=input$plotvar1, y=input$plotvar2, color="class"))+facet_grid(.~Gender)+labs(title = t)+scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))
-     
+   output$barplot <- renderPlotly({
+     t <- paste0("Bar plots for ", input$plotvar)
+     ggplot(data=mydata)+geom_bar(aes_string(x=input$plotvar, fill="class"), position = "dodge")+
+     facet_grid(.~Gender)+labs(title = t)+
+     scale_fill_discrete(name="Test result", labels=c("Negative", "Positive"))+
+     scale_fill_manual(values=wes_palette(n=2, name="Royal1"),labels=c("No", "Yes"))
    })
    
 # summary table of data
    output$sumtable <- DT::renderDataTable({
-     data <- data %>% select(class,Gender, everything())
-     data$class <- as.numeric(data$class)
+      columns = names(data)
+      columns = c("class", "Gender", "Age",input$summaryvar)
+      newdata <- data[,columns,drop=FALSE]
+      newdata <- newdata %>% select(class,Gender, everything())
+      newdata$class <- as.numeric(data$class)
      if (input$groups=="Gender")
-     sumdata <- data %>% group_by(Gender)
+     sumdata <- newdata %>% group_by(Gender)
      else if(input$groups=="Test result")
-       sumdata <- data %>% group_by(class)
+       sumdata <- newdata %>% group_by(class)
      else if (input$groups=="Test result and Gender")
-       sumdata <- data %>% group_by(class,Gender)
+       sumdata <- newdata %>% group_by(class,Gender)
      
      sumdata <-sumdata %>% summarise_all(list(mean))
-     sumdata[,3:17]<- round(sumdata[,3:17],2)
+     sumdata<- round(sumdata,2)
      datatable(sumdata)
    })
    
@@ -92,47 +109,207 @@ mydata <- as_tibble(mydata)
    
 #clustering using kmean
    output$kmean <- renderPlotly({
-     km.res <- kmeans(data[,1:16],input$numclust)
-     fviz_cluster(km.res, data = data[,1:16],
+      columns = names(data)
+      columns = input$kmeanVar
+      newdata <- data[,columns,drop=FALSE]
+     km.res <- kmeans(newdata,input$numclust)
+     fviz_cluster(km.res, data = newdata,
                   ellipse.type = "convex",
                   palette = "jco")
    })
 
 #Clustering using hierarchical clustering
+   clust <- eventReactive(input$cluststart,
+   {
+      columns = names(data)
+      columns = input$HierVar
+      newdata <- data[,columns,drop=FALSE]
+      HierClust <- hclust(dist(newdata), method = "ward.D2")
+      resultPlot <- fviz_dend(HierClust, k = input$clusteringNum, # Cut in four groups
+                              cex = 0.5, # label size
+                              palette = "jco",
+                              show_labels = FALSE, # color labels by groups
+                              rect = TRUE # Add rectangle around groups
+      )
+     }
+   )
    output$Hierclust <- renderPlotly({
-     HierClust <- hclust(dist(data[,1:16]), method = "ward.D2")
-     fviz_dend(HierClust, k = input$clusteringNum, # Cut in four groups
-               cex = 0.5, # label size
-               palette = "jco",
-               show_labels = FALSE, # color labels by groups
-               rect = TRUE # Add rectangle around groups
-     )
+      clust()
    })
    
-   #separating training and testing dataset
+#separating training and testing data set
    train <- sample(1:nrow(mydata), size = nrow(mydata)*0.8)
    test <- dplyr::setdiff(1:nrow(mydata), train)
    diabetesdataTrain <- mydata[train, ]
    diabetesdataTest <- mydata[test, ]
 
 #modeling1-logistic regression
-   reg_model <- eventReactive(input$start_reg,{
-      trctrl_reg <- trainControl(method = input$reg_trainmethod, 
-                                 number = input$reg_num_folders)
+   ## setting training control
+   reg_control <- reactive({
+      if (input$reg_trainmethod=="repeatedcv")
+         trctrl_reg <- trainControl(method = input$reg_trainmethod, 
+                                    number = input$reg_num_folders,
+                                    repeats = input$reg_num_times)
+      else
+         trctrl_reg <- trainControl(method = input$reg_trainmethod, 
+                                    number = input$reg_num_folders)
+   })
+   
+   ##training model
+   reg_model<- eventReactive(input$start_reg,{
       reg_fit <- train(class~., data = diabetesdataTrain, method = "glm",
                        family="binomial",
-                       trControl=trctrl_reg,
+                       trControl=reg_control(),
                        preProcess = c("center", "scale"))
-      output <- reg_fit$results
+                             })
+   ## output result
+   output$regTrain <- renderTable({
+         reg_model()$results
+                })
+   
+   ## testing model
+   reg_test <-  eventReactive(input$start_test_reg,
+                {reg_pred <- predict(reg_model(), newdata = diabetesdataTest[,1:16])
+                 result <- postResample(reg_pred, diabetesdataTest$class)
+                })
+   
+   ## showing testing result
+   output$regTest <- renderText({
+      result <- reg_test()
+      paste0("When testing in test data set the Accuracy is ", round(result[1],2), " and Kappa is ", round(result[2],2))
+
    })
    
-   output$regTrain <- renderPrint({
-      list <- reg_model()
-      list$output
+   ##read in predict data
+   reg_predictdata <- reactive({
+      data<-data.frame(Age=input$reg_age,Gender=input$reg_Gender,Polyuria=input$reg_Polyuria,Polydipsia=input$reg_Polydipsia,
+                              sudden.weight.loss=input$reg_WL,weakness=input$reg_weakness,Polyphagia=input$reg_Polyphagia,Genital.thrush=input$reg_GT,
+                              visual.blurring=input$reg_VB,Itching=input$reg_itch,Irritability=input$reg_irri,delayed.healing=input$reg_DH,
+                              partial.paresis=input$reg_PP,muscle.stiffness=input$reg_MS,Alopecia=input$reg_Alopecia,Obesity=input$reg_Obesity)
    })
+   
+   ## output predict dataset
+   output$reg_preddata <- renderTable({
+      reg_predictdata()
+   })
+   reg_pred <- reactive({      
+      reg_pred <- predict(reg_model(), newdata =reg_predictdata())
+      })
+   
+   ## output the result 
+   output$reg_pred <- renderText({
+      #res <- ifelse(reg_pred==0, "Negative", "Positive")
+      paste0("Your prediction is ", reg_pred())
+      })
    
 #modeling2-tree based(rf, bagged, boosting)
+   ##setting train control
+   tree_control <- reactive({
+      if (input$treemethod=="repeatedcv")
+         trctrl_tree <- trainControl(method = input$treemethod, 
+                                    number = input$tree_num_folders,
+                                    repeats = input$tree_num_times)
+      else
+         trctrl_tree <- trainControl(method = input$treemethod, 
+                                    number = input$tree_num_folders)
+   })
    
-#modeling3-KNN
+   ## UI update for number of tree
+   observe({updateSliderInput(session, "uppertree", min = input$lowertree+3, max=input$lowertree+15)})
    
+   ## tuning parameter control
+   param_control <- reactive({
+      parameter <- expand.grid(n.trees=seq(input$lowertree,input$uppertree,1),
+                           interaction.depth=5:10,
+                           shrinkage=0.1, n.minobsinnode=10)
+   })
+   
+   ## training tree model
+   tree_model<- eventReactive(input$start_tree,{
+      if (input$treetype=="rf")
+         tree_fit <- train(class~., data = diabetesdataTrain, method = "rf",
+                       trControl=tree_control(),
+                       tuneLength =10,
+                       preProcess = c("center", "scale"))
+      
+      else if (input$treetype=="treebag")
+         tree_fit <- train(class~., data = diabetesdataTrain, method = "treebag",
+                           trControl=tree_control(),
+                           preProcess = c("center", "scale"))
+      else
+         tree_fit <- train(class~., data = diabetesdataTrain, method = "gbm",
+                           trControl=tree_control(),
+                           tuneGrid=param_control(),
+                           preProcess = c("center", "scale"))
+   })
+   
+   ## show the training plot
+   output$treeTrainPlot <- renderPlot({
+                   if (input$treetype=="treebag")
+                   {}
+                   else
+                   plot(tree_model())
+                })
+   
+   ## show the training result
+   output$treeTrain <- renderTable({
+      if (input$treetype=="treebag")
+         tree_model()$results
+      else
+         tree_model()$bestTune
+   })
+   
+   
+   ## testing the model
+   tree_pred <- eventReactive(input$start_test_tree,
+                { tree_pred <- predict(tree_model(), newdata = diabetesdataTest[,1:16])
+                  result <- postResample(tree_pred, diabetesdataTest$class)
+                })
+   ## output testing result
+   output$treeTest <- renderText({
+      result <- tree_pred()
+      paste0("When testing in test data set the Accuracy is ", round(result[1],2), " and Kappa is ", round(result[2],2))
+      })
+   
+   ## read in predict data
+   treepredictdata <- reactive({
+      data<-data.frame(Age=input$tree_age,Gender=input$tree_Gender,Polyuria=input$tree_Polyuria,Polydipsia=input$tree_Polydipsia,
+                       sudden.weight.loss=input$tree_WL,weakness=input$tree_weakness,Polyphagia=input$tree_Polyphagia,Genital.thrush=input$tree_GT,
+                       visual.blurring=input$tree_VB,Itching=input$tree_itch,Irritability=input$tree_irri,delayed.healing=input$tree_DH,
+                       partial.paresis=input$tree_PP,muscle.stiffness=input$tree_MS,Alopecia=input$tree_Alopecia,Obesity=input$tree_Obesity)
+      
+   })
+
+   ## print out prediction
+   res_tree <- eventReactive(input$treepred,
+                {
+                   tree_pred <- predict(tree_model(), newdata =treepredictdata())
+                   res <- ifelse(tree_pred==0, "Negative", "Positive")
+                })
+   output$tree_pred <- renderText({
+      paste0("Your prediction is ", res_tree())
+      })
+
+#data saving page   
+   downloaddata<- data
+   # Table of selected dataset
+   costumerData <- eventReactive(input$filter,{
+      columns = names(data)
+      columns = input$column
+      downloaddata <- data[,columns,drop=FALSE]
+   })
+   output$dataforuser <- renderTable({
+      if(input$filterdata)costumerData()
+      else downloaddata
+   })
+   # Downloadable csv of selected dataset 
+   output$downloadData <- downloadHandler(
+      filename = function(){
+         if(input$filterdata)paste("SubsetDiabetesData", ".csv", sep = "")
+         else paste("diabetesData", ".csv", sep = "")},
+      content = function(file){
+         if(input$filterdata) write.csv(costumerData(), file)
+         else write.csv(downloaddata, file)}
+      
+   )
 })
