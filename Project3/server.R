@@ -58,7 +58,7 @@ output$math <- renderUI({
          scale_fill_manual(values=wes_palette(n=2, name="Royal1"),labels=c("No", "Yes"))
    })
 
-# scatter plot of data
+# bar plot of data
    output$barplot <- renderPlotly({
      t <- paste0("Bar plots for ", input$plotvar)
      ggplot(data=mydata)+geom_bar(aes_string(x=input$plotvar, fill="class"), position = "dodge")+
@@ -72,14 +72,14 @@ output$math <- renderUI({
       columns = names(data)
       columns = c("class", "Gender", "Age",input$summaryvar)
       newdata <- data[,columns,drop=FALSE]
-      newdata <- newdata %>% select(class,Gender, everything())
-      newdata$class <- as.numeric(data$class)
+      newdata <- newdata %>% select(class,Gender, everything())%>% rename(Reault=class)
+      newdata$Reault <- as.numeric(newdata$Reault)
      if (input$groups=="Gender")
      sumdata <- newdata %>% group_by(Gender)
      else if(input$groups=="Test result")
-       sumdata <- newdata %>% group_by(class)
+       sumdata <- newdata %>% group_by(Reault)
      else if (input$groups=="Test result and Gender")
-       sumdata <- newdata %>% group_by(class,Gender)
+       sumdata <- newdata %>% group_by(Reault,Gender)
      
      sumdata <-sumdata %>% summarise_all(list(mean))
      sumdata<- round(sumdata,2)

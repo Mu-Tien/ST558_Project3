@@ -46,7 +46,9 @@ shinyUI(fluidPage(
                sidebarLayout(
                  sidebarPanel(
                    radioButtons("groups",label="Choose variables you would like to group with",
-                                      choices = list("Gender", "Test result", "Test result and Gender"))
+                                      choices = list("Gender", "Test result", "Test result and Gender")),
+                   h6("Result=1 means positive Result=0 means negative"),
+                   h6("Gender=1 means Male Gender=0 means Female")
                  ),
                  mainPanel(
                    checkboxGroupInput("summaryvar",label = "variables that you want to check",
@@ -94,7 +96,7 @@ shinyUI(fluidPage(
                tabPanel("PCA",
                verticalLayout(
                  h2("Principle Component Analysis"),
-                 checkboxGroupInput("PCAVar",label = "Variables use in PCA",
+                 checkboxGroupInput("PCAVar",label = "Variables use in PCA (at least choose 2 variables)",
                                     choices = names(data)[1:16],
                                     inline = TRUE),
                  h4("Here I show you two Most explained PCA element"),
