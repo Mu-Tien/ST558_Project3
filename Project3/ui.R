@@ -249,7 +249,7 @@ shinyUI(fluidPage(
                             radioButtons("treetype",
                                          label = "Select a tree you want ot use in the model",
                                          choices = c("Bagged tree"="treebag",
-                                                     "Ransom forest"="rf",
+                                                     "Random forest"="rf",
                                                      "Boosted tree"="gbm")),
                             conditionalPanel(condition="input.treetype=='gbm'",
                                              sliderInput("lowertree",label="At least how many trees training in your model",
