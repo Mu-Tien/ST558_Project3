@@ -190,12 +190,9 @@ output$math <- renderUI({
                               partial.paresis=input$reg_PP,muscle.stiffness=input$reg_MS,Alopecia=input$reg_Alopecia,Obesity=input$reg_Obesity)
    })
    
-   ## output predict dataset
-   output$reg_preddata <- renderTable({
-      reg_predictdata()
-   })
-   
-   reg_pred <- reactive({      
+   ## output predict 
+   ## print out prediction
+   reg_pred <- eventReactive(input$regpred,{      
       model<-reg_model()
       data <-reg_predictdata()
       reg_pred <- predict(model,data)

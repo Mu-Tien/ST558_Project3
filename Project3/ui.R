@@ -229,7 +229,6 @@ shinyUI(fluidPage(
                               ),
                               actionButton("regpred","Start predicting"),
                               br(),
-                              tableOutput("reg_preddata"),
                               h1(em(textOutput("reg_pred")))
                               )
                             )
