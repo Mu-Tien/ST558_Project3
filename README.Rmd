@@ -1,8 +1,20 @@
+---
+title: "README"
+author: "Mu-Tien, Lee"
+date: "2020/11/18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, eval=FALSE}
 #install package used
 install.packages(c("ggbiplot","shiny","dmm","tidyverse","caret","readxl","wesanderson",
                    "ggiraphExtra","ggplot2","dplyr","ggpubr","rpart.plot","rpart","remotes",
                    "DT","cluster","factoextra","magrittr","NbClust","plotly","stats",
-                   "randomForest", "e1071", "gbm"))
+                   "randomForest", "e1071", "gbm", "CRAN"))
 
 #download ggbiplot
 library(remotes)
@@ -32,6 +44,9 @@ library(NbClust)
 library(plotly)
 library(wesanderson)
 library(stats)
+```
 
-
+```{r, eval=FALSE}
 runGitHub( "ST558_Project3", "Mu-Tien",subdir = "/Project3/")
+```
+
