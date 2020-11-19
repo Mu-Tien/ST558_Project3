@@ -12,7 +12,7 @@ shinyUI(fluidPage(
                h4("The main idea of this project is to use 13 symptoms, 
                   Gender, Age,and the test result to build a model for diabetes."),
                   "The idea is to let everyone have a basic idea whether they have diabetes. Some people are
-               not willing to go to the hospital for just a small symptoms. Therefore, this project can let them do the self-checking at home",
+               not willing to go to the hospital for just a small symptoms. Therefore, this project can let them do the self-examination at home",
                h4("This report will contain 5 different parts:"),
                h4("1. The introduction"),
                h4("2. Data summary"),
@@ -49,7 +49,7 @@ shinyUI(fluidPage(
                                       choices = list("Gender", "Test result", "Test result and Gender"))
                  ),
                  mainPanel(
-                   checkboxGroupInput("summaryvar",label = "Variables use in k mean",
+                   checkboxGroupInput("summaryvar",label = "variables that you want to check",
                                       choices = names(data)[3:16],
                                       inline = TRUE),
                    DT::dataTableOutput("sumtable")
@@ -94,6 +94,10 @@ shinyUI(fluidPage(
                tabPanel("PCA",
                verticalLayout(
                  h2("Principle Component Analysis"),
+                 checkboxGroupInput("PCAVar",label = "Variables use in PCA",
+                                    choices = names(data)[1:16],
+                                    inline = TRUE),
+                 h4("Here I show you two Most explained PCA element"),
                  plotlyOutput("PCA"))
                ), 
                #End of PCA
@@ -322,7 +326,7 @@ shinyUI(fluidPage(
                               actionButton("treepred","Start predicting"),
                               br(),
                               tableOutput("tree_preddata"),
-                              textOutput("tree_pred")
+                              h1(em(textOutput("tree_pred")))
                             )
                           )
                         )# end of predicting sidebar layout

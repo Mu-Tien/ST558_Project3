@@ -2,15 +2,10 @@
 library(ggbiplot)
 library(shiny)
 library(dmm)
-library(knitr)
-library(rmarkdown)
-library(MuMIn)
 library(tidyverse)
 library(caret)
 library(readxl)
-library(caret)
 library(ggiraphExtra)
-library(knitr)
 library(ggplot2)
 library(dplyr)
 library(ggpubr)
@@ -23,6 +18,7 @@ library(magrittr)
 library(NbClust)
 library(plotly)
 library(wesanderson)
+library(stats)
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output, session){
@@ -96,10 +92,15 @@ output$math <- renderUI({
      }
      data$Gender <- as.numeric(data$Gender)
      
+     
 #PCA plots
    output$PCA <- renderPlotly({
-     PCs <- prcomp(data[,1:16], center=TRUE, scale=TRUE)
-     ggbiplot(PCs, group=data$class)
+      columns = names(data)
+      columns = input$PCAVar
+      newdata <- data[,columns,drop=FALSE]
+      PCs <- prcomp(newdata, center=TRUE, scale=TRUE)
+      ggbiplot(PCs, group=data$class)
+      
    })
 
 # Optimal number of cluster
@@ -120,19 +121,19 @@ output$math <- renderUI({
 
 #Clustering using hierarchical clustering
    clust <- eventReactive(input$cluststart,
-   {
+   {  
       columns = names(data)
       columns = input$HierVar
       newdata <- data[,columns,drop=FALSE]
       HierClust <- hclust(dist(newdata), method = "ward.D2")
-      resultPlot <- fviz_dend(HierClust, k = input$clusteringNum, # Cut in four groups
+      resultPlot <- fviz_dend(HierClust, k = input$clusteringNum, # Cut in k groups
                               cex = 0.5, # label size
                               palette = "jco",
                               show_labels = FALSE, # color labels by groups
-                              rect = TRUE # Add rectangle around groups
-      )
+                              rect = TRUE) # Add rectangle around groups
      }
    )
+   
    output$Hierclust <- renderPlotly({
       clust()
    })
@@ -157,14 +158,15 @@ output$math <- renderUI({
    
    ##training model
    reg_model<- eventReactive(input$start_reg,{
-      reg_fit <- train(class~., data = diabetesdataTrain, method = "glm",
+      regmodel <- train(class~., data = diabetesdataTrain, method = "glm",
                        family="binomial",
                        trControl=reg_control(),
                        preProcess = c("center", "scale"))
                              })
    ## output result
    output$regTrain <- renderTable({
-         reg_model()$results
+         regmodel <-reg_model()
+         regmodel$results
                 })
    
    ## testing model
@@ -192,14 +194,17 @@ output$math <- renderUI({
    output$reg_preddata <- renderTable({
       reg_predictdata()
    })
+   
    reg_pred <- reactive({      
-      reg_pred <- predict(reg_model(), newdata =reg_predictdata())
+      model<-reg_model()
+      data <-reg_predictdata()
+      reg_pred <- predict(model,data)
       })
    
    ## output the result 
    output$reg_pred <- renderText({
-      #res <- ifelse(reg_pred==0, "Negative", "Positive")
-      paste0("Your prediction is ", reg_pred())
+      res <- ifelse(reg_pred()==0, "Negative", "Positive")
+      paste0("Your prediction is ", res)
       })
    
 #modeling2-tree based(rf, bagged, boosting)
@@ -282,8 +287,9 @@ output$math <- renderUI({
 
    ## print out prediction
    res_tree <- eventReactive(input$treepred,
-                {
-                   tree_pred <- predict(tree_model(), newdata =treepredictdata())
+                {  model <- tree_model()
+                   data <- treepredictdata()
+                   tree_pred <- predict(model, data)
                    res <- ifelse(tree_pred==0, "Negative", "Positive")
                 })
    output$tree_pred <- renderText({
