@@ -50,5 +50,6 @@ library(stats)
 
 ```{r, eval=FALSE}
 runGitHub( "ST558_Project3", "Mu-Tien",subdir = "/Project3/")
+
 ```
 

@@ -24,6 +24,7 @@ library(stats)
 shinyServer(function(input, output, session){
 
 #read in data
+getwd()
 data <- read.csv("diabetes_data.csv")
 
 #transfer data type
