@@ -13,14 +13,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, eval=FALSE}
 #install package used
-install.packages(c("ggbiplot","shiny","dmm","tidyverse","caret","readxl","wesanderson",
+install.packages(c("pca3d","shiny","dmm","tidyverse","caret","readxl","wesanderson",
                    "ggiraphExtra","ggplot2","dplyr","ggpubr","rpart.plot","rpart","remotes",
                    "DT","cluster","factoextra","magrittr","NbClust","plotly","stats",
                    "randomForest", "e1071", "gbm", "CRAN"))
-
-#download ggbiplot
-library(remotes)
-install_github("vqv/ggbiplot")
 
 #required package
 library(gbm)

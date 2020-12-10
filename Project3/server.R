@@ -6,7 +6,7 @@ library(tidyverse)
 library(caret)
 library(readxl)
 library(ggiraphExtra)
-library(ggplot2)
+library(pca3d)
 library(dplyr)
 library(ggpubr)
 library(rpart.plot)
@@ -95,18 +95,22 @@ output$math <- renderUI({
      
      
 #PCA plots
-   output$PCA <- renderPlotly({
+   output$PCA <- renderPlot({
       columns = names(data)
       columns = input$PCAVar
       newdata <- data[,columns,drop=FALSE]
       PCs <- prcomp(newdata, center=TRUE, scale=TRUE)
-      ggbiplot(PCs, group=data$class)
+      newdata$class <- as.factor(data$class)
+      pca2d(PCs, 1:2, biplot = TRUE, group = data$class)
       
    })
 
 # Optimal number of cluster
    output$recomCluster <- renderPlotly({
-     fviz_nbclust(data[,1:16], kmeans, method ="silhouette")
+      columns = names(data)
+      columns = input$kmeanVar
+      newdata <- data[,columns,drop=FALSE]
+      fviz_nbclust(newdata, kmeans, method ="silhouette")
    })
    
 #clustering using kmean

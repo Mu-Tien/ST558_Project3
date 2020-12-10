@@ -103,7 +103,7 @@ shinyUI(fluidPage(
                                     inline = TRUE),
                  br(),
                  h4("Here I show you two Most explained PCA element"),
-                 plotlyOutput("PCA"))
+                 plotOutput("PCA"))
                ), 
                #End of PCA
                
@@ -113,17 +113,16 @@ shinyUI(fluidPage(
                  h2("Clustering using k mean method"),
                    #kmean
                    verticalLayout(
-                     h3(em("Below plot shows you the optimal cluster")),
-                     plotlyOutput("recomCluster"),
-                     br(),
-                     h3(em("Slelect the number of cluster and variables you want to use in the model")),
-                     numericInput("numclust",label = "Number of cluster use in k mean",
-                              value=2, min=2, max=5),
-                     br(),
+                     h3(em("Slelect the variables you want to use in the model")),
                      checkboxGroupInput("kmeanVar",label = "Variables use in k mean  (choose at least 3 variables)",
                                         choices = names(data)[1:16],
                                         inline = TRUE),
+                     h3(em("Below plot shows you the optimal cluster")),
+                     plotlyOutput("recomCluster"),
                      br(),
+                     h3(em("Slelect the number of cluster you want to use in the model")),
+                     numericInput("numclust",label = "Number of cluster use in k mean",
+                                  value=2, min=2, max=5),
                      br(),
                      plotlyOutput("kmean"))
                  ),# End of vertical Layout

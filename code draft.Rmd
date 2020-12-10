@@ -83,17 +83,15 @@ sumtable(groups=c("Gender","class"))
 
 #unsupervised learning
 ```{r PCA}
-#install.packages("ggbiplot")
-library(ggbiplot)
+#install.packages("pca3d")
+library(pca3d)
 for (i in 1:nrow(data)){
   ifelse(data[i,2]=="Male",data[i,2] <- "1", data[i,2]<-"0" )
 }
 data$Gender <- as.numeric(data$Gender)
-pairs(data[,1:16],cex=0.4)
-PCs <- prcomp(data[,1:16], center=TRUE, scale=TRUE)
+PCs <- prcomp(data[,-17], center=TRUE, scale=TRUE)
 screeplot(PCs, type = "lines")
-biplot(PCs, xlabs=data$class, choices = c(1,2))
-ggbiplot(PCs, group=data$class)
+pca2d(PCs, 1:2, biplot = TRUE, group = data$class)
 ```
 
 ```{r Clustering}
